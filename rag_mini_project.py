@@ -10,19 +10,6 @@ Original file is located at
 it's so cooked
 """
 
-# Installs
-
-# LLM stuff
-!pip install torch transformers accelerate bitsandbytes
-# LangChain (splitting)
-!pip install langchain langchain-community langchain-core langchain-text-splitters langchain-chroma
-# Embeddings
-!pip install langchain-huggingface sentence-transformers
-# Vector Store, Documents
-!pip install chromadb pymupdf
-
-# Runtime -> Restart session
-
 # Imports
 
 import torch # GPU usage
@@ -111,17 +98,20 @@ vectordb = Chroma.from_documents(
 retriever = vectordb.as_retriever()
 
 # Prompt template
-rag_template = """Use the given context to answer the question.
-If you don't know the answer, say you don't know. Do not make up facts.
-Keep the answer concise.
+rag_template = """
+<|begin_of_text|>
+<|start_header_id|>system<|end_header_id|>
+
+Use the given context to answer the question.
+If the answer is not explicitly stated in the context, say "I don't know based on the provided material."
 
 Context:
 
-{context}
+{context}<|eot_id|>
 
+<|start_header_id|>user<|end_header_id|>
 Question:
-
-{question}
+{question}<|eot_id|>
 """
 prompt = PromptTemplate.from_template(rag_template)
 
@@ -130,7 +120,7 @@ from langchain_classic.chains import RetrievalQA
 # Q&A chain
 qa_chain = RetrievalQA.from_chain_type(
     llm,
-    retriever=vectordb.as_retriever(search_kwargs={'k': 3}),# retrieve top-k chunks
+    retriever=vectordb.as_retriever(search_type='mmr'),
     return_source_documents=True,
     chain_type="stuff",
     chain_type_kwargs={"prompt": prompt},
